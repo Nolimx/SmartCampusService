@@ -86,18 +86,35 @@ jobs:
           TAG_URL="${{ steps.deploy.outputs.tag_url }}"
           REVISION="${{ steps.deploy.outputs.revision }}"
 
+          if [ -z "$TAG_URL" ] || [ "$TAG_URL" = "null" ]; then
+            echo "::error::Cloud Run did not return a URL for tag ${{ steps.deploy.outputs.tag }}"
+            exit 1
+          fi
+
           # ─── ตรวจสอบ revision status ก่อน ─────────────────────────
           echo "Checking revision $REVISION readiness..."
+          CONDITION="Unknown"
           for i in $(seq 1 12); do
-            CONDITION=$(gcloud run revisions describe "$REVISION" \
-              --format='value(status.conditions.filter(type=Ready).status)' 2>/dev/null || echo "Unknown")
+            CONDITION=$(gcloud run revisions describe "$REVISION" --region "$REGION" --format=json 2>/dev/null \
+              | jq -r '[.status.conditions[]? | select(.type == "Ready") | .status][0] // "Unknown"')
             echo "  revision condition: $CONDITION (check $i/12)"
             if [ "$CONDITION" = "True" ]; then
               echo "Revision is ready!"
               break
             fi
+            if [ "$CONDITION" = "False" ]; then
+              echo "::error::Revision $REVISION is not ready. Conditions:"
+              gcloud run revisions describe "$REVISION" --region "$REGION" --format='yaml(status.conditions)'
+              exit 1
+            fi
             sleep 10
           done
+
+          if [ "$CONDITION" != "True" ]; then
+            echo "::error::Could not confirm revision $REVISION readiness after 12 checks"
+            gcloud run revisions describe "$REVISION" --region "$REGION" --format='yaml(status.conditions)' || true
+            exit 1
+          fi
 
           # ─── สร้าง Identity Token (WIF ต้อง impersonate SA) ──────
           TOKEN=$(gcloud auth print-identity-token \

@@ -70,27 +70,42 @@ jobs:
         run: |
           TAG="sha-${GITHUB_SHA::7}"
           # อัปเดตแค่ image: env, secrets, network, service account คงค่าจากตอน setup
-          gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" --quiet
+          gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" --allow-unauthenticated --quiet
           REVISION=$(gcloud run services describe "$SERVICE" --format='value(status.latestCreatedRevisionName)')
           SERVICE_URL=$(gcloud run services describe "$SERVICE" --format='value(status.url)')
+          # ดึง Tag URL จริงจาก Cloud Run โดยตรง (ไม่ต้อง string-replace เอง)
+          TAG_URL=$(gcloud run services describe "$SERVICE" \
+            --format="value(status.traffic.url)" \
+            --flatten="status.traffic" \
+            --filter="status.traffic.tag=$TAG")
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
-          echo "tag_url=${SERVICE_URL/https:\/\//https://$TAG---}" >> "$GITHUB_OUTPUT"
+          echo "tag_url=$TAG_URL" >> "$GITHUB_OUTPUT"
           echo "service_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test new revision
         run: |
+          TAG_URL="${{ steps.deploy.outputs.tag_url }}"
+          TOKEN=$(gcloud auth print-identity-token --audiences="$TAG_URL")
           echo "Waiting 15s for Cloud Run tag routing to propagate across Google Front End..."
           sleep 15
           for i in $(seq 1 15); do
-            echo "Attempt $i/15: probing ${{ steps.deploy.outputs.tag_url }}/healthz"
-            if curl -fsS --max-time 10 "${{ steps.deploy.outputs.tag_url }}/healthz"; then
-              echo "Smoke test passed successfully!"
+            echo "Attempt $i/15: probing ${TAG_URL}/healthz"
+            HTTP_CODE=$(curl -s -o /tmp/smoke_body.txt -w "%{http_code}" \
+              --max-time 10 \
+              -H "Authorization: Bearer $TOKEN" \
+              "${TAG_URL}/healthz")
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Smoke test passed! (HTTP $HTTP_CODE)"
+              cat /tmp/smoke_body.txt
               exit 0
             fi
+            echo "::warning::HTTP $HTTP_CODE - Response body:"
+            cat /tmp/smoke_body.txt
+            echo ""
             sleep 5
           done
-          echo "::error::Smoke test failed - traffic stays on the previous revision"
+          echo "::error::Smoke test failed after 15 attempts - traffic stays on the previous revision"
           exit 1
 
       - name: Shift traffic to new revision

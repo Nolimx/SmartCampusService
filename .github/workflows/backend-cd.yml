@@ -73,11 +73,9 @@ jobs:
           gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" --allow-unauthenticated --quiet
           REVISION=$(gcloud run services describe "$SERVICE" --format='value(status.latestCreatedRevisionName)')
           SERVICE_URL=$(gcloud run services describe "$SERVICE" --format='value(status.url)')
-          # ดึง Tag URL จริงจาก Cloud Run โดยตรง (ไม่ต้อง string-replace เอง)
-          TAG_URL=$(gcloud run services describe "$SERVICE" \
-            --format="value(status.traffic.url)" \
-            --flatten="status.traffic" \
-            --filter="status.traffic.tag=$TAG")
+          # ดึง Tag URL จริงจาก Cloud Run โดยตรง (ใช้ JSON + jq)
+          TAG_URL=$(gcloud run services describe "$SERVICE" --format=json \
+            | jq -r --arg t "$TAG" '.status.traffic[] | select(.tag == $t) | .url')
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "tag_url=$TAG_URL" >> "$GITHUB_OUTPUT"

@@ -84,14 +84,28 @@ jobs:
       - name: Smoke test new revision
         run: |
           TAG_URL="${{ steps.deploy.outputs.tag_url }}"
-          TOKEN=$(gcloud auth print-identity-token --audiences="$TAG_URL")
+
+          # WIF ใช้ external_account credential → ต้อง impersonate SA เพื่อออก ID Token
+          TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account="${{ vars.DEPLOYER_SA }}" \
+            --audiences="$TAG_URL" \
+            --include-email 2>/dev/null) || true
+
+          if [ -n "$TOKEN" ]; then
+            echo "Identity token acquired (via SA impersonation)"
+            AUTH_ARGS=(-H "Authorization: Bearer $TOKEN")
+          else
+            echo "::warning::Could not mint identity token – trying without auth (service must be public)"
+            AUTH_ARGS=()
+          fi
+
           echo "Waiting 15s for Cloud Run tag routing to propagate across Google Front End..."
           sleep 15
           for i in $(seq 1 15); do
             echo "Attempt $i/15: probing ${TAG_URL}/healthz"
             HTTP_CODE=$(curl -s -o /tmp/smoke_body.txt -w "%{http_code}" \
               --max-time 10 \
-              -H "Authorization: Bearer $TOKEN" \
+              "${AUTH_ARGS[@]}" \
               "${TAG_URL}/healthz")
             if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "Smoke test passed! (HTTP $HTTP_CODE)"

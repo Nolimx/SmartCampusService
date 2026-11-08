@@ -110,6 +110,10 @@ JSON
     --role=roles/iam.workloadIdentityUser \
     --member="principalSet://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/github/attribute.repository/$REPO" \
     >/dev/null
+  # GitHub Actions uses the deployer identity to mint an ID token for Cloud Run smoke tests.
+  gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" \
+    --role=roles/iam.serviceAccountTokenCreator \
+    --member="serviceAccount:$DEPLOYER_SA" >/dev/null
 
   log "Done. GitHub Environment variables (dev + prod):"
   echo "  GCP_PROJECT_ID = $PROJECT_ID"
@@ -252,6 +256,7 @@ JSON
 
   log "[$env] Cloud Run service $SERVICE"
   local svc_flags=(--region="$REGION" --service-account="$API_SA" "${net[@]}"
+    --ingress=all
     --set-env-vars="$envs" --set-secrets="$secrets"
     --cpu=1 --memory=512Mi --min-instances=0 --max-instances="$MAX_INSTANCES"
     --concurrency=80 --cpu-throttling)

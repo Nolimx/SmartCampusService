@@ -84,6 +84,7 @@ jobs:
       - name: Smoke test new revision
         run: |
           TAG_URL="${{ steps.deploy.outputs.tag_url }}"
+          SERVICE_URL="${{ steps.deploy.outputs.service_url }}"
           REVISION="${{ steps.deploy.outputs.revision }}"
 
           if [ -z "$TAG_URL" ] || [ "$TAG_URL" = "null" ]; then
@@ -119,7 +120,7 @@ jobs:
           # ─── สร้าง Identity Token (WIF ต้อง impersonate SA) ──────
           TOKEN=$(gcloud auth print-identity-token \
             --impersonate-service-account="${{ vars.DEPLOYER_SA }}" \
-            --audiences="$TAG_URL" \
+            --audiences="$SERVICE_URL" \
             --include-email 2>/dev/null) || true
 
           if [ -n "$TOKEN" ]; then

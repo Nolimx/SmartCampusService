@@ -80,8 +80,12 @@ jobs:
 
       - name: Smoke test new revision
         run: |
-          for i in 1 2 3 4 5; do
+          echo "Waiting 15s for Cloud Run tag routing to propagate across Google Front End..."
+          sleep 15
+          for i in $(seq 1 15); do
+            echo "Attempt $i/15: probing ${{ steps.deploy.outputs.tag_url }}/healthz"
             if curl -fsS --max-time 10 "${{ steps.deploy.outputs.tag_url }}/healthz"; then
+              echo "Smoke test passed successfully!"
               exit 0
             fi
             sleep 5

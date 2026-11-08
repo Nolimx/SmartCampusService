@@ -4,7 +4,7 @@ Smart Campus Service Platform - FastAPI application (Modular Monolith)
 Router -> Service -> Model/DB ทุกโมดูล; error ทุกชนิดตอบเป็น {"message", "details"}
 Cloud Run ส่ง SIGTERM แล้ว uvicorn ปิดตัวเอง (lifespan shutdown คืน connection pool)
 """
-
+"""test backend"""
 import logging
 import os
 from contextlib import asynccontextmanager

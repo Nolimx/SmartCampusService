@@ -84,8 +84,22 @@ jobs:
       - name: Smoke test new revision
         run: |
           TAG_URL="${{ steps.deploy.outputs.tag_url }}"
+          REVISION="${{ steps.deploy.outputs.revision }}"
 
-          # WIF ใช้ external_account credential → ต้อง impersonate SA เพื่อออก ID Token
+          # ─── ตรวจสอบ revision status ก่อน ─────────────────────────
+          echo "Checking revision $REVISION readiness..."
+          for i in $(seq 1 12); do
+            CONDITION=$(gcloud run revisions describe "$REVISION" \
+              --format='value(status.conditions.filter(type=Ready).status)' 2>/dev/null || echo "Unknown")
+            echo "  revision condition: $CONDITION (check $i/12)"
+            if [ "$CONDITION" = "True" ]; then
+              echo "Revision is ready!"
+              break
+            fi
+            sleep 10
+          done
+
+          # ─── สร้าง Identity Token (WIF ต้อง impersonate SA) ──────
           TOKEN=$(gcloud auth print-identity-token \
             --impersonate-service-account="${{ vars.DEPLOYER_SA }}" \
             --audiences="$TAG_URL" \
@@ -99,10 +113,11 @@ jobs:
             AUTH_ARGS=()
           fi
 
-          echo "Waiting 15s for Cloud Run tag routing to propagate across Google Front End..."
-          sleep 15
-          for i in $(seq 1 15); do
-            echo "Attempt $i/15: probing ${TAG_URL}/healthz"
+          # ─── Probe /healthz ──────────────────────────────────────
+          echo "Waiting 30s for Cloud Run tag routing to propagate across Google Front End..."
+          sleep 30
+          for i in $(seq 1 20); do
+            echo "Attempt $i/20: probing ${TAG_URL}/healthz"
             HTTP_CODE=$(curl -s -o /tmp/smoke_body.txt -w "%{http_code}" \
               --max-time 10 \
               "${AUTH_ARGS[@]}" \
@@ -115,9 +130,9 @@ jobs:
             echo "::warning::HTTP $HTTP_CODE - Response body:"
             cat /tmp/smoke_body.txt
             echo ""
-            sleep 5
+            sleep 10
           done
-          echo "::error::Smoke test failed after 15 attempts - traffic stays on the previous revision"
+          echo "::error::Smoke test failed after 20 attempts - traffic stays on the previous revision"
           exit 1
 
       - name: Shift traffic to new revision

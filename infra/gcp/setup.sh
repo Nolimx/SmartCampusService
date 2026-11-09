@@ -273,6 +273,9 @@ JSON
   else
     gcloud run deploy "$SERVICE" --image="$image" "${svc_flags[@]}" --allow-unauthenticated
   fi
+  # Keep existing services public too; deployer lacks permission to change IAM during every CD run.
+  gcloud run services add-iam-policy-binding "$SERVICE" --region="$REGION" \
+    --member=allUsers --role=roles/run.invoker >/dev/null
   echo "ตั้ง startup probe: Console > Cloud Run > $SERVICE > Edit > Health checks > HTTP GET /health"
 
   log "[$env] GitHub Environment '$env' variables"

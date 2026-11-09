@@ -100,12 +100,19 @@ JSON
   project_number=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
   exists gcloud iam workload-identity-pools describe github --location=global ||
     gcloud iam workload-identity-pools create github --location=global --display-name="GitHub"
-  exists gcloud iam workload-identity-pools providers describe smart-campus \
-    --location=global --workload-identity-pool=github ||
+  if exists gcloud iam workload-identity-pools providers describe smart-campus \
+    --location=global --workload-identity-pool=github; then
+    # Keep an existing provider in sync; create-only setup leaves stale repo conditions behind.
+    gcloud iam workload-identity-pools providers update-oidc smart-campus --location=global \
+      --workload-identity-pool=github --issuer-uri="https://token.actions.githubusercontent.com" \
+      --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+      --attribute-condition="assertion.repository == '$REPO'"
+  else
     gcloud iam workload-identity-pools providers create-oidc smart-campus --location=global \
       --workload-identity-pool=github --issuer-uri="https://token.actions.githubusercontent.com" \
       --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
       --attribute-condition="assertion.repository == '$REPO'"
+  fi
   gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" \
     --role=roles/iam.workloadIdentityUser \
     --member="principalSet://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/github/attribute.repository/$REPO" \

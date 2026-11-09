@@ -186,9 +186,9 @@ ps:
 
 health:
 	@echo "🏥 Checking health..."
-	@curl -s http://localhost:8000/healthz | python -m json.tool
+	@curl -s http://localhost:8000/health | python -m json.tool
 	@echo ""
-	@curl -s http://localhost:8000/readyz | python -m json.tool
+	@curl -s http://localhost:8000/ready | python -m json.tool
 
 api-docs:
 	@echo "📚 Opening API documentation..."

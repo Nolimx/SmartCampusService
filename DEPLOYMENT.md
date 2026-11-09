@@ -42,7 +42,7 @@ export PROJECT_ID=smart-campus-prod          # REGION ค่าเริ่ม�
 `env` ตั้ง `CORS_ORIGINS=https://storage.googleapis.com` ให้ตรงกับเว็บที่โฮสต์บน bucket
 ถ้า frontend ใช้โดเมนอื่น ส่งเป็นอาร์กิวเมนต์ที่ 3 เช่น `./setup.sh env prod https://campus.example.com`
 
-สคริปต์รันซ้ำได้ (resource ที่มีแล้วจะข้าม) จากนั้นตั้ง **startup probe** `HTTP GET /healthz`
+สคริปต์รันซ้ำได้ (resource ที่มีแล้วจะข้าม) จากนั้นตั้ง **startup probe** `HTTP GET /health`
 ที่ Console › Cloud Run › service › Edit › Health checks ทั้ง dev และ prod
 
 > dev ใส่ข้อมูลตัวอย่างได้ด้วย `SEED_DEMO_DATA=true ./setup.sh seed dev <email>` — **ห้ามใช้กับ prod**
@@ -78,7 +78,7 @@ export PROJECT_ID=smart-campus-prod          # REGION ค่าเริ่ม�
 | Workflow | Trigger | ขั้นตอน |
 |---|---|---|
 | `.github/workflows/backend-ci.yml` | PR เข้า `dev`/`main`, push ที่แก้ `backend/**` | `ruff check` + `ruff format --check` → `alembic upgrade/downgrade/upgrade` → `pytest` (PostgreSQL 15) → `docker build --target production` |
-| `.github/workflows/backend-cd.yml` | push `dev` → env `dev`, push `main` → env `prod` | WIF auth → build + push `:<git-sha>` → migration job → deploy revision แบบ `--no-traffic` → smoke test `/healthz` บน tag URL → ย้าย traffic 100% (รันด้วยมือใส่ `traffic_percent` เพื่อทำ canary ได้) |
+| `.github/workflows/backend-cd.yml` | push `dev` → env `dev`, push `main` → env `prod` | WIF auth → build + push `:<git-sha>` → migration job → deploy revision แบบ `--no-traffic` → smoke test `/health` บน tag URL → ย้าย traffic 100% (รันด้วยมือใส่ `traffic_percent` เพื่อทำ canary ได้) |
 | `.github/workflows/frontend-cd.yml` | PR/push ที่แก้ `frontend/**` | lint + build ทุกครั้ง · push `dev`/`main` → `vite build --base=/<bucket>/` → `gcloud storage rsync` ไป `WEB_BUCKET` → smoke test |
 
 จุดที่ pipeline หยุดได้ 3 จุด: **CI ไม่ผ่าน**, **migration ล้ม**, **smoke test ล้ม** —

@@ -112,5 +112,5 @@ Base URL: `/api/v1` · Swagger: `/api/v1/docs` (ปิดใน production) · A
 
 | Path | ใช้ทำ |
 |---|---|
-| `GET /healthz` | startup/liveness probe ของ Cloud Run (ไม่แตะ DB) |
-| `GET /readyz` | ตรวจ DB (`503` ถ้าต่อไม่ได้) |
+| `GET /health` | startup/liveness probe ของ Cloud Run (ไม่แตะ DB) |
+| `GET /ready` | ตรวจ DB (`503` ถ้าต่อไม่ได้) |

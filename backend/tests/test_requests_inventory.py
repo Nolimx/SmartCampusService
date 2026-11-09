@@ -160,5 +160,5 @@ async def test_notifications_are_private(client, student, student2, room):
 
 
 async def test_health(client):
-    assert (await client.get("/healthz")).json()["status"] == "ok"
-    assert (await client.get("/readyz")).status_code == 200
+    assert (await client.get("/health")).json()["status"] == "ok"
+    assert (await client.get("/ready")).status_code == 200

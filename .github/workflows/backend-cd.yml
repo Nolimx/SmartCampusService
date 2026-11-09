@@ -3,7 +3,7 @@
 #   push main -> GitHub Environment "prod" -> campus-api (ตั้ง required reviewer ให้ prod)
 #
 # ขั้นตอน: WIF auth -> build/push image :<git-sha> -> migration job -> deploy revision
-#          แบบยังไม่รับ traffic -> smoke test /healthz บน tag URL -> ย้าย traffic 100%
+#          แบบยังไม่รับ traffic -> smoke test /health บน tag URL -> ย้าย traffic 100%
 # ถ้า migration หรือ smoke test ล้ม pipeline หยุดและ revision เดิมยังรับ traffic อยู่
 name: backend-cd
 
@@ -70,7 +70,9 @@ jobs:
         run: |
           TAG="sha-${GITHUB_SHA::7}"
           # อัปเดตแค่ image: env, secrets, network, service account คงค่าจากตอน setup
-          gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" --allow-unauthenticated --quiet
+          gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" \
+            --startup-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=10,timeoutSeconds=2,failureThreshold=3 \
+            --allow-unauthenticated --quiet
           REVISION=$(gcloud run services describe "$SERVICE" --format='value(status.latestCreatedRevisionName)')
           SERVICE_URL=$(gcloud run services describe "$SERVICE" --format='value(status.url)')
           # ดึง Tag URL จริงจาก Cloud Run โดยตรง (ใช้ JSON + jq)
@@ -131,15 +133,15 @@ jobs:
             AUTH_ARGS=()
           fi
 
-          # ─── Probe /healthz ──────────────────────────────────────
+          # ─── Probe /health ───────────────────────────────────────
           echo "Waiting 30s for Cloud Run tag routing to propagate across Google Front End..."
           sleep 30
           for i in $(seq 1 20); do
-            echo "Attempt $i/20: probing ${TAG_URL}/healthz"
+            echo "Attempt $i/20: probing ${TAG_URL}/health"
             HTTP_CODE=$(curl -s -o /tmp/smoke_body.txt -w "%{http_code}" \
               --max-time 10 \
               "${AUTH_ARGS[@]}" \
-              "${TAG_URL}/healthz")
+              "${TAG_URL}/health")
             if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "Smoke test passed! (HTTP $HTTP_CODE)"
               cat /tmp/smoke_body.txt

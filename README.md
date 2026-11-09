@@ -66,7 +66,7 @@ docker compose exec -e SEED_DEMO_DATA=true backend python seed.py
 **4. ลองเรียก API**
 
 ```bash
-curl http://localhost:8000/healthz
+curl http://localhost:8000/health
 
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \

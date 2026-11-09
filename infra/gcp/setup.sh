@@ -266,7 +266,7 @@ JSON
   else
     gcloud run deploy "$SERVICE" --image="$image" "${svc_flags[@]}" --allow-unauthenticated
   fi
-  echo "ตั้ง startup probe: Console > Cloud Run > $SERVICE > Edit > Health checks > HTTP GET /healthz"
+  echo "ตั้ง startup probe: Console > Cloud Run > $SERVICE > Edit > Health checks > HTTP GET /health"
 
   log "[$env] GitHub Environment '$env' variables"
   local api_url

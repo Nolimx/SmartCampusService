@@ -118,16 +118,16 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 # -----------------------------------------------------------------------------
-# Health checks (Cloud Run startup probe = /healthz)
+# Health checks (avoid Cloud Run's reserved paths ending in "z")
 # -----------------------------------------------------------------------------
-@app.get("/healthz", tags=["Health"])
-async def healthz():
+@app.get("/health", tags=["Health"])
+async def health():
     """Liveness/startup - ไม่แตะ DB เพื่อให้ instance ขึ้นได้แม้ DB ช้าชั่วคราว"""
     return {"status": "ok", "version": settings.APP_VERSION}
 
 
-@app.get("/readyz", tags=["Health"])
-async def readyz():
+@app.get("/ready", tags=["Health"])
+async def ready():
     if not await check_db_connection():
         return _error(503, "Database unavailable")
     return {"status": "ready", "database": "ok"}

@@ -100,7 +100,7 @@
 
 | Pattern | ใช้ที่ไหน |
 |---|---|
-| Health check | `/healthz` (startup probe ไม่แตะ DB), `/readyz` (ตรวจ DB) |
+| Health check | `/health` (startup probe ไม่แตะ DB), `/ready` (ตรวจ DB) |
 | Rate limiting | `POST /auth/login` 5 ครั้ง/นาที/IP |
 | Retry / self-healing | `pool_pre_ping` ตัด connection ที่ตายแล้วต่อใหม่ · Cloud Run สร้าง instance ใหม่แทนตัวที่ล้มเอง · GCS client retry ให้ในตัว |
 | Graceful shutdown | uvicorn เป็น PID 1 รับ SIGTERM แล้วปิด connection pool |
@@ -219,7 +219,7 @@ service account แยกต่อ environment สิทธิ์น้อยท
 | ลำดับ | งาน | ใคร |
 |---|---|---|
 | 1 | `./setup.sh shared` แล้ว `./setup.sh env dev` | Owner ของ project |
-| 2 | ตั้ง startup probe `/healthz` ใน Console | Owner |
+| 2 | ตั้ง startup probe `/health` ใน Console | Owner |
 | 3 | สร้าง GitHub Environments `dev`/`prod` ใส่ตัวแปร (รวม `WEB_BUCKET`, `API_BASE_URL`) และตั้ง `DEPLOY_ENABLED=true` | Owner ของ repo |
 | 4 | push เข้า `dev` ให้ CD deploy จริงครั้งแรก, รัน `demo_race.py` กับ dev | Backend |
 | 5 | `./setup.sh dashboard dev`, `./setup.sh budget <billing>` | Backend |

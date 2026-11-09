@@ -26,5 +26,5 @@ def test_json_formatter_includes_trace():
 
 
 async def test_middleware_passes_requests(client):
-    resp = await client.get("/healthz", headers={"X-Cloud-Trace-Context": "abc/1;o=1"})
+    resp = await client.get("/health", headers={"X-Cloud-Trace-Context": "abc/1;o=1"})
     assert resp.status_code == 200

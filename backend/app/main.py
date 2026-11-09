@@ -71,7 +71,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
+# Cloud Run's HTTP startup probe reaches the container through its internal
+# link-local address rather than a *.run.app hostname.
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[*settings.ALLOWED_HOSTS, "169.254.169.126", "localhost", "127.0.0.1"],
+)
 app.add_middleware(TraceContextMiddleware)
 
 

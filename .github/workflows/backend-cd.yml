@@ -72,7 +72,7 @@ jobs:
           # อัปเดตแค่ image: env, secrets, network, service account คงค่าจากตอน setup
           gcloud run deploy "$SERVICE" --image "$IMAGE" --no-traffic --tag "$TAG" \
             --startup-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=10,timeoutSeconds=2,failureThreshold=3 \
-            --allow-unauthenticated --quiet
+            --quiet
           REVISION=$(gcloud run services describe "$SERVICE" --format='value(status.latestCreatedRevisionName)')
           SERVICE_URL=$(gcloud run services describe "$SERVICE" --format='value(status.url)')
           # ดึง Tag URL จริงจาก Cloud Run โดยตรง (ใช้ JSON + jq)
